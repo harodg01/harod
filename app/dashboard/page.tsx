@@ -32,6 +32,12 @@ export default function DashboardPage() {
       router.push("/auth/login")
       return
     }
+    if (currentUser.role === "patient") {
+    router.push("/patient-portal")
+    return
+  }
+
+  
 
     setUser(currentUser)
 

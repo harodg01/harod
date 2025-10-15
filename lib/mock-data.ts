@@ -4,7 +4,8 @@ export interface User {
   id: string
   email: string
   fullName: string
-  role: "admin" | "doctor" | "nurse"
+  role: "admin" | "doctor" | "nurse" | "patient"
+  patientId?: string
   password: string
 }
 
@@ -48,6 +49,9 @@ export interface AuditLog {
 
 // Initialize default data
 function initializeData() {
+  if (!localStorage.getItem("patientDocuments")) {
+  localStorage.setItem("patientDocuments", JSON.stringify([]))
+}
   if (typeof window === "undefined") return
 
   if (!localStorage.getItem("users")) {
@@ -291,4 +295,70 @@ export function createAuditLog(
   logs.push(newLog)
   localStorage.setItem("auditLogs", JSON.stringify(logs))
   return newLog
+}
+
+// ADD THIS INTERFACE after the CheckIn interface
+export interface PatientDocument {
+  id: string
+  patientId: string
+  fileName: string
+  fileType: "image" | "pdf" | "document" | "lab-result" | "prescription" | "letter" | "other"
+  fileUrl: string
+  fileSize: number
+  uploadedBy: string
+  uploadedAt: string
+  description?: string
+  tags?: string[]
+}
+
+// ADD THIS to the initializeData function (after the auditLogs initialization)
+if (!localStorage.getItem("patientDocuments")) {
+  localStorage.setItem("patientDocuments", JSON.stringify([]))
+}
+// Patient Documents
+export interface PatientDocument {
+  id: string
+  patientId: string
+  fileName: string
+  fileType: "image" | "pdf" | "document" | "lab-result" | "prescription" | "letter" | "other"
+  fileUrl: string
+  fileSize: number
+  uploadedBy: string
+  uploadedAt: string
+  description?: string
+  tags?: string[]
+}
+
+export function getPatientDocuments(patientId: string): PatientDocument[] {
+  if (typeof window === "undefined") return []
+  const documents = localStorage.getItem("patientDocuments")
+  const allDocuments: PatientDocument[] = documents ? JSON.parse(documents) : []
+  return allDocuments.filter((doc) => doc.patientId === patientId)
+}
+
+export function createPatientDocument(
+  document: Omit<PatientDocument, "id" | "fileUrl" | "uploadedAt">
+): PatientDocument {
+  const documents = getAllPatientDocuments()
+  const newDocument: PatientDocument = {
+    ...document,
+    id: Date.now().toString(),
+    fileUrl: `/documents/${document.fileName}`,
+    uploadedAt: new Date().toISOString(),
+  }
+  documents.push(newDocument)
+  localStorage.setItem("patientDocuments", JSON.stringify(documents))
+  return newDocument
+}
+
+export function deletePatientDocument(documentId: string) {
+  const documents = getAllPatientDocuments()
+  const filtered = documents.filter((doc) => doc.id !== documentId)
+  localStorage.setItem("patientDocuments", JSON.stringify(filtered))
+}
+
+function getAllPatientDocuments(): PatientDocument[] {
+  if (typeof window === "undefined") return []
+  const documents = localStorage.getItem("patientDocuments")
+  return documents ? JSON.parse(documents) : []
 }

@@ -10,13 +10,17 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Activity } from "lucide-react"
-import { createUser, getUserByEmail, createAuditLog } from "@/lib/mock-data"
+import { createUser, getUserByEmail, createAuditLog, createPatient } from "@/lib/mock-data"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<string>("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
+  const [showPatientFields, setShowPatientFields] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -39,12 +43,43 @@ export default function SignUpPage() {
         throw new Error("User with this email already exists")
       }
 
-      const newUser = createUser({
-        email,
-        password,
-        fullName,
-        role: role as "admin" | "doctor" | "nurse",
-      })
+      let patientId: string | undefined = undefined
+
+// If role is patient, create patient record first
+if (role === "patient") {
+  if (!dateOfBirth || !phone || !address) {
+    throw new Error("Please fill in all patient information")
+  }
+
+  const nameParts = fullName.split(" ")
+  const firstName = nameParts[0]
+  const lastName = nameParts.slice(1).join(" ") || nameParts[0]
+
+  const newPatient = createPatient({
+  firstName,
+  lastName,
+  dateOfBirth,
+  email,
+  phone,
+  address,
+  gender: "other",
+  bloodType: "",
+  medicalHistory: "",
+  allergies: "",
+  currentMedications: "",
+  assignedTo: [],
+})
+
+  patientId = newPatient.id
+}
+
+const newUser = createUser({
+  email,
+  password,
+  fullName,
+  role: role as "admin" | "doctor" | "nurse" | "patient",
+  patientId,
+})  
 
       // Create audit log
       createAuditLog({
@@ -118,7 +153,10 @@ export default function SignUpPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={setRole}>
+                <Select value={role} onValueChange={(value) => {
+  setRole(value)
+  setShowPatientFields(value === "patient")
+}}>
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -126,9 +164,50 @@ export default function SignUpPage() {
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="doctor">Doctor</SelectItem>
                     <SelectItem value="nurse">Nurse</SelectItem>
+                    <SelectItem value="patient">Patient</SelectItem>
                   </SelectContent>
                 </Select>
+                
               </div>
+              {showPatientFields && (
+  <>
+    <div className="space-y-2">
+      <Label htmlFor="dateOfBirth">Date of Birth</Label>
+      <Input
+        id="dateOfBirth"
+        type="date"
+        value={dateOfBirth}
+        onChange={(e) => setDateOfBirth(e.target.value)}
+        required
+        className="h-11"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label htmlFor="phone">Phone Number</Label>
+      <Input
+        id="phone"
+        type="tel"
+        placeholder="+1 (555) 000-0000"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        required
+        className="h-11"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label htmlFor="address">Address</Label>
+      <Input
+        id="address"
+        type="text"
+        placeholder="123 Main St, City, State"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        required
+        className="h-11"
+      />
+    </div>
+  </>
+)}
               {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
               <Button type="submit" className="h-11 w-full font-medium" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create account"}
